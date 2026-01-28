@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Comissões - Young Empreendimentos</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Logo de fundo transparente -->
+    <div class="background-logo"></div>
+
+    <!-- Header/Navegação -->
+    <header class="main-header">
+        <div class="header-content">
+            <div class="logo-header">
+                <img src="/static/img/logo-young.png" alt="Young" class="logo-img-header">
+                <div class="logo-text-header">Young Empreendimentos</div>
+            </div>
+            <nav class="nav-tabs">
+                <button class="nav-tab active" data-page="home">Página Inicial</button>
+                <button class="nav-tab" data-page="empreendimento">Consulta por Empreendimento</button>
+                <button class="nav-tab" data-page="contrato">Consulta por Contrato</button>
+                <button class="nav-tab" data-page="corretor">Consulta por Corretor</button>
+                {% if user.is_admin %}
+                <button class="nav-tab" data-page="visualizar-comissoes">Visualizar Comissões</button>
+                <button class="nav-tab" data-page="configuracoes">Configurações</button>
+                {% endif %}
+                <button class="nav-tab" data-page="exportacoes">Exportações</button>
+            </nav>
+            <div class="header-actions">
+                <span style="color: white; margin-right: 1rem;">{{ user.nome_completo }}</span>
+                <a href="{{ url_for('logout') }}" class="btn-sync">
+                    <span>Sair</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Alerts Container -->
+        <div id="alerts"></div>
+
+        <!-- Página Inicial -->
+        <div id="home" class="page active">
+            <div class="welcome-section">
+                <h1 class="welcome-title">Bem-vindo ao Sistema de Comissões Young</h1>
+                <p class="welcome-subtitle">Consulte comissões, contratos e informações de corretores de forma simples e rápida</p>
+            </div>
+        </div>
+
+        <!-- Página: Consulta por Empreendimento -->
+        <div id="empreendimento" class="page">
+            <div class="page-content">
+                <div class="card">
+                    <h2 class="card-title">
+                        <span>Selecionar Empreendimento e Contrato</span>
+                    </h2>
+
+                    <div class="form-group">
+                        <label class="form-label" for="buildingSelect">Empreendimento</label>
+                        <select id="buildingSelect" class="form-select">
+                            <option value="">Selecione um empreendimento</option>
+                        </select>
+                    </div>
+
+                    <div id="loadingContracts" class="loading">
+                        <div class="spinner"></div>
+                        <p>Carregando contratos...</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="contractSelect">Contrato</label>
+                        <select id="contractSelect" class="form-select" disabled>
+                            <option value="">Selecione um contrato</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Loading Info -->
+                <div id="loadingInfo" class="loading">
+                    <div class="spinner"></div>
+                    <p>Carregando informações...</p>
+                </div>
+
+                <!-- Card de Informações do Contrato -->
+                <div id="contractInfo" class="card hidden">
+                    <h2 class="card-title">
+                        <span>Informações do Contrato</span>
+                    </h2>
+
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <div class="info-label">Contrato</div>
+                            <div class="info-value" id="infoNumeroContrato">-</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Cliente</div>
+                            <div class="info-value" id="infoCliente">-</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Corretor</div>
+                            <div class="info-value" id="infoCorretor">-</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Comissão</div>
+                            <div class="info-value currency" id="infoValorComissao">-</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Valor Total</div>
+                            <div class="info-value currency" id="infoValorTotal">-</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Valor à Vista</div>
+                            <div class="info-value currency" id="infoValorVista">-</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">ITBI</div>
+                            <div class="info-value currency" id="infoValorITBI">-</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Valor Pago</div>
+                            <div class="info-value currency" id="infoValorPago">-</div>
+                        </div>
+                    </div>
+
+                    <!-- Informações de Gatilho -->
+                    <div id="gatilhoInfo" class="card-section hidden" style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #333;">
+                        <h3 style="margin-bottom: 1rem; color: #FE5009;">Informações do Gatilho para Comissão</h3>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <div class="info-label">Regra do Gatilho</div>
+                                <div class="info-value" id="infoRegraGatilho">-</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Valor do Gatilho</div>
+                                <div class="info-value currency" id="infoValorGatilho">-</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Atingiu Gatilho?</div>
+                                <div class="info-value" id="infoAtingiuGatilho">-</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Página: Consulta por Contrato -->
+        <div id="contrato" class="page">
+            <div class="page-content">
+                <div class="card">
+                    <h2 class="card-title">
+                        <span>Buscar por Número do Lote</span>
+                    </h2>
+
+                    <div class="form-group autocomplete-wrapper">
+                        <label class="form-label" for="loteSearch">Digite o número do lote</label>
+                        <input 
+                            type="text" 
+                            id="loteSearch" 
+                            class="form-input" 
+                            placeholder="Ex: 2224"
+                            autocomplete="off"
+                        />
+                        <div id="autocompleteResults" class="autocomplete-results"></div>
+                    </div>
+                </div>
+
+                <!-- Loading Info Lote -->
+                <div id="loadingInfoLote" class="loading">
+                    <div class="spinner"></div>
+                    <p>Carregando informações...</p>
+                </div>
+
+                <!-- Card de Informações do Lote -->
+                <div id="loteInfo" class="card hidden">
+                    <h2 class="card-title">
+                        <span>Informações do Lote</span>
+                    </h2>
+
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <div class="info-label">Lote</div>
+                            <div class="info-value" id="infoLoteNumero">-</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Empreendimento</div>
+                            <div class="info-value" id="infoLoteEmpreendimento">-</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Cliente</div>
+                            <div class="info-value" id="infoLoteCliente">-</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Corretor</div>
+                            <div class="info-value" id="infoLoteCorretor">-</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Comissão</div>
+                            <div class="info-value currency" id="infoLoteComissao">-</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Valor à Vista</div>
+                            <div class="info-value currency" id="infoLoteValorTotal">-</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">ITBI</div>
+                            <div class="info-value currency" id="infoLoteITBI">-</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Valor Pago</div>
+                            <div class="info-value currency" id="infoLoteValorPago">-</div>
+                        </div>
+                    </div>
+
+                    <!-- Gatilho do Lote -->
+                    <div id="gatilhoInfoLote" class="card-section hidden" style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #333;">
+                        <h3 style="margin-bottom: 1rem; color: #FE5009;">Informações do Gatilho para Comissão</h3>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <div class="info-label">Regra do Gatilho</div>
+                                <div class="info-value" id="infoLoteRegraGatilho">-</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Valor do Gatilho</div>
+                                <div class="info-value currency" id="infoLoteValorGatilho">-</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Atingiu Gatilho?</div>
+                                <div class="info-value" id="infoLoteAtingiuGatilho">-</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Página: Consulta por Corretor -->
+        <div id="corretor" class="page">
+            <div class="page-content">
+                <div class="card">
+                    <h2 class="card-title">
+                        <span>Selecionar Corretor</span>
+                    </h2>
+
+                    <div class="form-group">
+                        <label class="form-label" for="corretorSelect">Corretor</label>
+                        <select id="corretorSelect" class="form-select">
+                            <option value="">Selecione um corretor</option>
+                        </select>
+                    </div>
+
+                    <div id="loadingContratosCorretor" class="loading">
+                        <div class="spinner"></div>
+                        <p>Carregando contratos...</p>
+                    </div>
+                </div>
+
+                <!-- Card de Contratos do Corretor -->
+                <div id="contratosCorretor" class="card hidden">
+                    <h2 class="card-title">
+                        <span>Contratos do Corretor</span>
+                    </h2>
+
+                    <div id="listaContratosCorretor"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Página: Visualizar Comissões (Admin Only) -->
+        {% if user.is_admin %}
+        <div id="visualizar-comissoes" class="page">
+            <div class="page-content">
+                <div class="card">
+                    <h2 class="card-title">
+                        <span>Visualizar Comissões</span>
+                    </h2>
+                    <p class="card-subtitle">Visualize e gerencie todas as comissões do sistema</p>
+
+                    <!-- Filtros -->
+                    <div class="filtros-comissoes" style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem;">
+                        <div class="form-group" style="flex: 1; min-width: 200px;">
+                            <label class="form-label">Status Parcela</label>
+                            <select id="filtroStatusParcela" class="form-select">
+                                <option value="">Todos</option>
+                                <option value="Pago">Pago</option>
+                                <option value="Pendente">Pendente</option>
+                                <option value="Vencido">Vencido</option>
+                                <option value="Aberto">Aberto</option>
+                                <option value="Parcial">Parcial</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="flex: 1; min-width: 200px;">
+                            <label class="form-label">Gatilho Atingido</label>
+                            <select id="filtroGatilho" class="form-select">
+                                <option value="">Todos</option>
+                                <option value="true">Sim</option>
+                                <option value="false">Não</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="flex: 1; min-width: 200px;">
+                            <label class="form-label">Status Aprovação</label>
+                            <select id="filtroStatusAprovacao" class="form-select">
+                                <option value="">Todos</option>
+                                <option value="Pendente">Pendente</option>
+                                <option value="Pendente de Aprovação">Pendente de Aprovação</option>
+                                <option value="Aprovada">Aprovada</option>
+                                <option value="Rejeitada">Rejeitada</option>
+                            </select>
+                        </div>
+                        <div style="display: flex; align-items: flex-end; gap: 0.5rem;">
+                            <button class="btn-primary" onclick="buscarComissoes()">Buscar</button>
+                            <button class="btn-secondary" onclick="limparFiltrosComissoes()">Limpar</button>
+                        </div>
+                    </div>
+
+                    <!-- Ações em Lote -->
+                    <div id="acoesLote" class="acoes-lote hidden" style="background: #1a1a1a; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; display: flex; align-items: center; gap: 1rem;">
+                        <span><strong id="qtdSelecionadas">0</strong> comissões selecionadas</span>
+                        <button class="btn-primary" onclick="enviarParaAprovacao()">Enviar para Aprovação da Direção</button>
+                    </div>
+
+                    <!-- Loading -->
+                    <div id="loadingComissoes" class="loading" style="display: none;">
+                        <div class="spinner"></div>
+                        <p>Carregando comissões...</p>
+                    </div>
+
+                    <!-- Tabela -->
+                    <div id="tabelaComissoesContainer" style="overflow-x: auto;">
+                        <table class="tabela-comissoes" style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="background: linear-gradient(135deg, #FE5009, #c73d00); color: white;">
+                                    <th style="padding: 1rem;"><input type="checkbox" id="selecionarTodas" onchange="toggleTodasComissoes()"></th>
+                                    <th style="padding: 1rem;">Status Parcela</th>
+                                    <th style="padding: 1rem;">Corretor</th>
+                                    <th style="padding: 1rem;">Empreendimento</th>
+                                    <th style="padding: 1rem;">Lote</th>
+                                    <th style="padding: 1rem;">Cliente</th>
+                                    <th style="padding: 1rem;">Valor Comissão</th>
+                                    <th style="padding: 1rem;">Valor Gatilho</th>
+                                    <th style="padding: 1rem;">Atingiu?</th>
+                                    <th style="padding: 1rem;">Status Aprovação</th>
+                                </tr>
+                            </thead>
+                            <tbody id="corpoTabelaComissoes">
+                                <tr><td colspan="10" style="text-align: center; padding: 2rem;">Clique em "Buscar" para carregar as comissões</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Página: Configurações (Admin Only) -->
+        <div id="configuracoes" class="page">
+            <div class="page-content">
+                <div class="card">
+                    <h2 class="card-title">
+                        <span>Configurações</span>
+                    </h2>
+
+                    <!-- Sub-navegação -->
+                    <div style="display: flex; gap: 1rem; margin-bottom: 2rem; border-bottom: 2px solid #333; padding-bottom: 1rem;">
+                        <button class="btn-secondary" onclick="document.getElementById('configUsuarios').style.display='block'; document.getElementById('configCorretores').style.display='none'; document.getElementById('configEmails').style.display='none'; carregarUsuariosConfig();">Usuários</button>
+                        <button class="btn-secondary" onclick="document.getElementById('configUsuarios').style.display='none'; document.getElementById('configCorretores').style.display='block'; document.getElementById('configEmails').style.display='none'; carregarCorretoresConfig();">Corretores</button>
+                        <button class="btn-secondary" onclick="document.getElementById('configUsuarios').style.display='none'; document.getElementById('configCorretores').style.display='none'; document.getElementById('configEmails').style.display='block'; carregarConfiguracoesEmails();">E-mails</button>
+                        <button id="syncButton" class="btn-sync" style="margin-left: auto;">
+                            <span>Sincronizar Dados</span>
+                        </button>
+                        <span id="syncStatus" class="sync-status"></span>
+                    </div>
+
+                    <!-- Config Usuários -->
+                    <div id="configUsuarios">
+                        <h3 style="margin-bottom: 1rem;">Gerenciamento de Usuários</h3>
+                        <div id="listaUsuariosConfig">
+                            <p>Carregando...</p>
+                        </div>
+                        <div style="margin-top: 1rem;">
+                            <button class="btn-primary" onclick="abrirModalNovoUsuario()">+ Novo Usuário</button>
+                        </div>
+                    </div>
+
+                    <!-- Config Corretores -->
+                    <div id="configCorretores" style="display: none;">
+                        <h3 style="margin-bottom: 1rem;">Corretores Cadastrados</h3>
+                        <div id="listaCorretoresConfig">
+                            <p>Carregando...</p>
+                        </div>
+                        <div style="margin-top: 1rem;">
+                            <a href="{{ url_for('cadastro_corretor') }}" class="btn-primary" style="text-decoration: none; display: inline-block;">+ Novo Corretor</a>
+                        </div>
+                    </div>
+
+                    <!-- Config E-mails -->
+                    <div id="configEmails" style="display: none;">
+                        <h3 style="margin-bottom: 1rem;">Configurações de E-mail</h3>
+                        <p style="margin-bottom: 1rem; color: #999;">Configure os destinatários de e-mails automáticos do sistema.</p>
+                        <div id="configEmailsList">
+                            <p>Carregando...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Página: Exportações -->
+        <div id="exportacoes" class="page">
+            <div class="page-content">
+                <div class="card">
+                    <h2 class="card-title">
+                        <span>Exportar Relatórios</span>
+                    </h2>
+                    <p class="card-subtitle">Selecione o tipo de relatório e formato para exportação</p>
+
+                    <div class="export-grid">
+                        <!-- Exportação por Comissões -->
+                        <div class="export-card">
+                            <h3 class="export-title">Comissões</h3>
+                            <div class="export-options">
+                                <div class="form-group">
+                                    <label class="form-label">Tipo de Filtro</label>
+                                    <select id="exportComissoestipo" class="form-select">
+                                        <option value="todos">Todas as Comissões</option>
+                                        <option value="periodo">Por Período</option>
+                                        <option value="corretor">Por Corretor</option>
+                                        <option value="empreendimento">Por Empreendimento</option>
+                                    </select>
+                                </div>
+                                <div class="export-buttons">
+                                    <button onclick="exportarComissoes('excel')" class="btn-export btn-excel">Excel</button>
+                                    <button onclick="exportarComissoes('pdf')" class="btn-export btn-pdf">PDF</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Exportação por Contratos -->
+                        <div class="export-card">
+                            <h3 class="export-title">Contratos</h3>
+                            <div class="export-options">
+                                <div class="form-group">
+                                    <label class="form-label">Tipo de Filtro</label>
+                                    <select id="exportContratostipo" class="form-select">
+                                        <option value="todos">Todos os Contratos</option>
+                                        <option value="corretor">Por Corretor</option>
+                                        <option value="empreendimento">Por Empreendimento</option>
+                                    </select>
+                                </div>
+                                <div class="export-buttons">
+                                    <button onclick="exportarContratos('excel')" class="btn-export btn-excel">Excel</button>
+                                    <button onclick="exportarContratos('pdf')" class="btn-export btn-pdf">PDF</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Relatório Geral -->
+                        <div class="export-card">
+                            <h3 class="export-title">Relatório Geral</h3>
+                            <div class="export-options">
+                                <p class="export-description">Exporta todos os dados consolidados</p>
+                                <div class="export-buttons">
+                                    <button onclick="exportarRelatorioGeral('excel')" class="btn-export btn-excel">Excel</button>
+                                    <button onclick="exportarRelatorioGeral('pdf')" class="btn-export btn-pdf">PDF</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Novo Usuário -->
+    <div id="modalNovoUsuario" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3>Novo Usuário</h3>
+                <button class="modal-close" onclick="fecharModalNovoUsuario()">&times;</button>
+            </div>
+            <form id="formNovoUsuario" onsubmit="salvarNovoUsuario(event)">
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label for="novoUsername" style="display: block; margin-bottom: 0.5rem; color: #ccc;">Username</label>
+                    <input type="text" id="novoUsername" required style="width: 100%; padding: 0.75rem; border-radius: 8px; border: 1px solid #444; background: #2a2a2a; color: #fff;">
+                </div>
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label for="novoNomeCompleto" style="display: block; margin-bottom: 0.5rem; color: #ccc;">Nome Completo</label>
+                    <input type="text" id="novoNomeCompleto" required style="width: 100%; padding: 0.75rem; border-radius: 8px; border: 1px solid #444; background: #2a2a2a; color: #fff;">
+                </div>
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label for="novoSenha" style="display: block; margin-bottom: 0.5rem; color: #ccc;">Senha</label>
+                    <input type="password" id="novoSenha" required style="width: 100%; padding: 0.75rem; border-radius: 8px; border: 1px solid #444; background: #2a2a2a; color: #fff;">
+                </div>
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label for="novoPerfil" style="display: block; margin-bottom: 0.5rem; color: #ccc;">Perfil</label>
+                    <select id="novoPerfil" required style="width: 100%; padding: 0.75rem; border-radius: 8px; border: 1px solid #444; background: #2a2a2a; color: #fff;">
+                        <option value="Gestor">Gestor</option>
+                        <option value="Direção">Direção</option>
+                        <option value="Corretor">Corretor</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; color: #ccc;">
+                        <input type="checkbox" id="novoIsAdmin"> Administrador
+                    </label>
+                </div>
+                <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
+                    <button type="button" class="btn-secondary" onclick="fecharModalNovoUsuario()">Cancelar</button>
+                    <button type="submit" class="btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

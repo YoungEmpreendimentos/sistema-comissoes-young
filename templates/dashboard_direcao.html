@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Direção - Sistema de Comissões Young</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .direcao-header {
+            background: linear-gradient(135deg, #323232 0%, #0D0D0D 100%);
+            border-bottom: 2px solid #FE5009;
+        }
+
+        .badge-direcao {
+            background: linear-gradient(135deg, #FE5009, #751900);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-left: 1rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: #323232;
+            border: 1px solid rgba(254, 80, 9, 0.2);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #FE5009;
+        }
+
+        .stat-label {
+            color: #D7D7D9;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+
+        .acoes-lote {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            padding: 1rem;
+            background: rgba(254, 80, 9, 0.1);
+            border: 1px solid rgba(254, 80, 9, 0.2);
+            border-radius: 8px;
+            align-items: center;
+        }
+
+        .acoes-lote.hidden {
+            display: none;
+        }
+
+        .btn-aprovar {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .btn-aprovar:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-rejeitar {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .btn-rejeitar:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+        }
+
+        .selecionados-info {
+            flex: 1;
+            color: #D7D7D9;
+        }
+
+        .tabela-comissoes {
+            width: 100%;
+            border-collapse: collapse;
+            background: #323232;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .tabela-comissoes th {
+            background: #1a1a1a;
+            color: white;
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        .tabela-comissoes td {
+            padding: 1rem;
+            border-bottom: 1px solid rgba(254, 80, 9, 0.1);
+            color: #D7D7D9;
+        }
+
+        .tabela-comissoes tr:hover {
+            background: rgba(254, 80, 9, 0.05);
+        }
+
+        .checkbox-direcao {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            accent-color: #FE5009;
+        }
+
+        .gatilho-sim {
+            color: #10b981;
+            font-weight: 600;
+        }
+
+        .gatilho-nao {
+            color: #ef4444;
+        }
+
+        /* Modal de Rejeicao */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #323232;
+            border-radius: 16px;
+            padding: 2rem;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(254, 80, 9, 0.2);
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: #fff;
+        }
+
+        .modal-textarea {
+            width: 100%;
+            min-height: 120px;
+            padding: 1rem;
+            border: 2px solid rgba(254, 80, 9, 0.2);
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 1rem;
+            resize: vertical;
+            margin-bottom: 1rem;
+            background: rgba(0, 0, 0, 0.3);
+            color: #fff;
+        }
+
+        .modal-textarea:focus {
+            outline: none;
+            border-color: #FE5009;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+        }
+
+        .btn-cancelar {
+            background: #1a1a1a;
+            color: #D7D7D9;
+            border: 1px solid rgba(254, 80, 9, 0.2);
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .loading-direcao {
+            text-align: center;
+            padding: 3rem;
+            color: #999;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: #999;
+        }
+
+        .empty-state-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            color: #10b981;
+        }
+    </style>
+</head>
+<body>
+    <!-- Logo de fundo transparente -->
+    <div class="background-logo"></div>
+
+    <!-- Header -->
+    <header class="main-header direcao-header">
+        <div class="header-content">
+            <div class="logo-header">
+                <img src="/static/img/logo-young.png" alt="Young" class="logo-img-header">
+                <div class="logo-text-header">Young Empreendimentos</div>
+                <span class="badge-direcao">Direção</span>
+            </div>
+            <div class="header-actions">
+                <span style="color: white; margin-right: 1rem;">{{ user.nome_completo }}</span>
+                <a href="{{ url_for('logout') }}" class="btn-sync">
+                    <span>Sair</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Alerts -->
+        <div id="alerts"></div>
+
+        <h1 style="margin-bottom: 2rem; color: #fff;">Comissões Pendentes de Aprovação</h1>
+
+        <!-- Estatisticas -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="totalPendente">0</div>
+                <div class="stat-label">Total Pendente</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="valorTotal">R$ 0,00</div>
+                <div class="stat-label">Valor Total</div>
+            </div>
+        </div>
+
+        <!-- Acoes em Lote -->
+        <div class="acoes-lote hidden" id="acoesLoteDirecao">
+            <div class="selecionados-info">
+                <strong id="qtdSelecionadas">0</strong> comissões selecionadas
+            </div>
+            <button class="btn-aprovar" onclick="aprovarComissoesSelecionadas()">
+                Aprovar Selecionadas
+            </button>
+            <button class="btn-rejeitar" onclick="abrirModalRejeitar()">
+                Rejeitar Selecionadas
+            </button>
+        </div>
+
+        <!-- Loading -->
+        <div class="loading-direcao" id="loadingDirecao">
+            <div class="spinner"></div>
+            <p>Carregando comissões pendentes...</p>
+        </div>
+
+        <!-- Tabela de Comissoes -->
+        <div id="tabelaContainer" style="display: none;">
+            <table class="tabela-comissoes">
+                <thead>
+                    <tr>
+                        <th><input type="checkbox" class="checkbox-direcao" id="selecionarTodasDirecao" onchange="toggleTodasDirecao()"></th>
+                        <th>Corretor</th>
+                        <th>Empreendimento</th>
+                        <th>Lote</th>
+                        <th>Cliente</th>
+                        <th>Valor</th>
+                        <th>Data</th>
+                        <th>Gatilho</th>
+                        <th>Data Envio</th>
+                    </tr>
+                </thead>
+                <tbody id="corpoTabelaDirecao">
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Estado vazio -->
+        <div id="emptyState" class="empty-state" style="display: none;">
+            <div class="empty-state-icon">OK</div>
+            <h3>Nenhuma comissão pendente de aprovação</h3>
+            <p>Todas as comissões já foram processadas.</p>
+        </div>
+    </div>
+
+    <!-- Modal de Rejeicao -->
+    <div class="modal-overlay" id="modalRejeitar">
+        <div class="modal-content">
+            <h2 class="modal-title">Motivo da Rejeicao</h2>
+            <textarea class="modal-textarea" id="motivoRejeicao" placeholder="Informe o motivo da rejeicao..."></textarea>
+            <div class="modal-buttons">
+                <button class="btn-cancelar" onclick="fecharModalRejeitar()">Cancelar</button>
+                <button class="btn-rejeitar" onclick="confirmarRejeicao()">Confirmar Rejeicao</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/direcao.js"></script>
+</body>
+</html>

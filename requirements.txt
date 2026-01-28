@@ -1,0 +1,22 @@
+# Flask e extensões
+Flask==3.0.0
+Werkzeug==3.0.1
+Flask-Login==0.6.3
+Flask-Cors==4.0.0
+
+# Supabase
+supabase>=2.10.0
+websockets>=13.0
+
+# HTTP Requests (para API Sienge)
+requests==2.31.0
+
+# Variáveis de ambiente
+python-dotenv==1.0.0
+
+# Agendamento de tarefas
+APScheduler==3.10.4
+
+# Utilitários
+python-dateutil==2.8.2
+bcrypt>=4.0.0

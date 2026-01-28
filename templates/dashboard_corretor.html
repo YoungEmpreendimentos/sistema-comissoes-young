@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meus Contratos - Sistema de Comissões Young</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .corretor-header {
+            background: linear-gradient(135deg, #FE5009 0%, #751900 100%);
+        }
+
+        .welcome-corretor {
+            text-align: center;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .welcome-corretor h1 {
+            color: #fff;
+            margin-bottom: 0.5rem;
+        }
+
+        .welcome-corretor p {
+            color: #D7D7D9;
+        }
+
+        .stats-corretor {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: #323232;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            text-align: center;
+            border-left: 4px solid #FE5009;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #FE5009;
+        }
+
+        .stat-label {
+            color: #D7D7D9;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+
+        .contratos-lista {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .contrato-card {
+            background: #323232;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border-left: 4px solid #FE5009;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .contrato-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+        }
+
+        .contrato-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .contrato-numero {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .contrato-empreendimento {
+            background: #FE5009;
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .contrato-info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+        }
+
+        .contrato-info-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .contrato-info-label {
+            font-size: 0.8rem;
+            color: #999;
+            margin-bottom: 0.25rem;
+        }
+
+        .contrato-info-value {
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .contrato-info-value.valor {
+            color: #10b981;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .status-pendente {
+            background: rgba(245, 158, 11, 0.2);
+            color: #fbbf24;
+        }
+
+        .status-aprovada {
+            background: rgba(16, 185, 129, 0.2);
+            color: #34d399;
+        }
+
+        .status-paga {
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+        }
+
+        .loading-corretor {
+            text-align: center;
+            padding: 3rem;
+            color: #999;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: #999;
+        }
+
+        .empty-state-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            color: #FE5009;
+        }
+    </style>
+</head>
+<body>
+    <!-- Logo de fundo transparente -->
+    <div class="background-logo"></div>
+
+    <!-- Header -->
+    <header class="main-header corretor-header">
+        <div class="header-content">
+            <div class="logo-header">
+                <img src="/static/img/logo-young.png" alt="Young" class="logo-img-header">
+                <div class="logo-text-header">Young Empreendimentos</div>
+            </div>
+            <div class="header-actions">
+                <span style="color: white; margin-right: 1rem;">{{ user.nome }}</span>
+                <a href="{{ url_for('logout') }}" class="btn-sync">
+                    <span>Sair</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Alerts -->
+        <div id="alerts"></div>
+
+        <div class="welcome-corretor">
+            <h1>Ola, {{ user.nome }}!</h1>
+            <p>Acompanhe seus contratos e comissões</p>
+        </div>
+
+        <!-- Estatisticas -->
+        <div class="stats-corretor">
+            <div class="stat-card">
+                <div class="stat-value" id="totalContratos">0</div>
+                <div class="stat-label">Total de Contratos</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="totalComissoes">R$ 0,00</div>
+                <div class="stat-label">Total em Comissoes</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="comissoesAprovadas">R$ 0,00</div>
+                <div class="stat-label">Comissões Aprovadas</div>
+            </div>
+        </div>
+
+        <!-- Lista de Contratos -->
+        <div class="card">
+            <h2 class="card-title">
+                <span>Meus Contratos</span>
+            </h2>
+
+            <!-- Loading -->
+            <div class="loading-corretor" id="loadingCorretor">
+                <div class="spinner"></div>
+                <p>Carregando seus contratos...</p>
+            </div>
+
+            <!-- Lista -->
+            <div class="contratos-lista" id="listaContratosCorretor" style="display: none;">
+            </div>
+
+            <!-- Estado vazio -->
+            <div id="emptyStateCorretor" class="empty-state" style="display: none;">
+                <div class="empty-state-icon">-</div>
+                <h3>Nenhum contrato encontrado</h3>
+                <p>Voce ainda nao possui contratos registrados.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Corretor ID do usuario logado
+        const corretorSiengeId = {{ user.sienge_id or 'null' }};
+        const corretorNome = "{{ user.nome }}";
+
+        // Funcoes utilitarias
+        function formatCurrency(value) {
+            if (value === null || value === undefined || value === '') return 'R$ 0,00';
+            return new Intl.NumberFormat('pt-BR', {
+                style: 'currency',
+                currency: 'BRL'
+            }).format(value);
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '-';
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('pt-BR');
+        }
+
+        function showAlert(message, type = 'info') {
+            const alertsContainer = document.getElementById('alerts');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            alertsContainer.appendChild(alert);
+            setTimeout(() => alert.remove(), 4000);
+        }
+
+        function getStatusBadge(status) {
+            const statusLower = (status || '').toLowerCase();
+            if (statusLower.includes('aprovad')) return '<span class="status-badge status-aprovada">Aprovada</span>';
+            if (statusLower.includes('pag')) return '<span class="status-badge status-paga">Paga</span>';
+            return '<span class="status-badge status-pendente">Pendente</span>';
+        }
+
+        // Carregar contratos do corretor
+        async function carregarContratosCorretor() {
+            const loading = document.getElementById('loadingCorretor');
+            const lista = document.getElementById('listaContratosCorretor');
+            const emptyState = document.getElementById('emptyStateCorretor');
+
+            try {
+                const params = new URLSearchParams();
+                if (corretorSiengeId) {
+                    params.append('corretor_id', corretorSiengeId);
+                } else {
+                    params.append('corretor_nome', corretorNome);
+                }
+
+                const response = await fetch(`/api/contratos-por-corretor?${params}`);
+                const contratos = await response.json();
+
+                loading.style.display = 'none';
+
+                if (!contratos || contratos.length === 0) {
+                    emptyState.style.display = 'block';
+                    return;
+                }
+
+                lista.style.display = 'flex';
+
+                // Calcular estatisticas
+                let totalComissoes = 0;
+                let comissoesAprovadas = 0;
+
+                contratos.forEach(c => {
+                    const valor = parseFloat(c.commission_value || 0);
+                    totalComissoes += valor;
+                    if ((c.status_aprovacao || '').toLowerCase().includes('aprovad')) {
+                        comissoesAprovadas += valor;
+                    }
+                });
+
+                document.getElementById('totalContratos').textContent = contratos.length;
+                document.getElementById('totalComissoes').textContent = formatCurrency(totalComissoes);
+                document.getElementById('comissoesAprovadas').textContent = formatCurrency(comissoesAprovadas);
+
+                // Renderizar contratos
+                lista.innerHTML = contratos.map(c => `
+                    <div class="contrato-card">
+                        <div class="contrato-header">
+                            <div class="contrato-numero">Contrato ${c.numero_contrato || c.contract_number || '-'}</div>
+                            <div class="contrato-empreendimento">${c.enterprise_name || c.empreendimento || '-'}</div>
+                        </div>
+                        <div class="contrato-info-grid">
+                            <div class="contrato-info-item">
+                                <div class="contrato-info-label">Unidade/Lote</div>
+                                <div class="contrato-info-value">${c.unit_name || c.unidade || '-'}</div>
+                            </div>
+                            <div class="contrato-info-item">
+                                <div class="contrato-info-label">Cliente</div>
+                                <div class="contrato-info-value">${c.customer_name || c.nome_cliente || '-'}</div>
+                            </div>
+                            <div class="contrato-info-item">
+                                <div class="contrato-info-label">Comissão</div>
+                                <div class="contrato-info-value valor">${formatCurrency(c.commission_value)}</div>
+                            </div>
+                            <div class="contrato-info-item">
+                                <div class="contrato-info-label">Status</div>
+                                <div class="contrato-info-value">${getStatusBadge(c.status_aprovacao || c.installment_status)}</div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+
+            } catch (error) {
+                console.error('Erro ao carregar contratos:', error);
+                loading.style.display = 'none';
+                showAlert('Erro ao carregar contratos', 'error');
+            }
+        }
+
+        // Inicializar
+        document.addEventListener('DOMContentLoaded', carregarContratosCorretor);
+    </script>
+</body>
+</html>
