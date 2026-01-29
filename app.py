@@ -5,6 +5,7 @@ Aplicação Flask principal com todas as rotas e funcionalidades
 
 import os
 import re
+import logging
 from datetime import datetime
 from flask import Flask, render_template, jsonify, request, redirect, url_for, flash, session
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
@@ -20,10 +21,48 @@ from aprovacao_comissoes import AprovacaoComissoes
 
 load_dotenv()
 
-# Inicializar Flask
+# ==================== CONFIGURAÇÃO DE LOGGING ====================
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+# ==================== VALIDAÇÃO DE AMBIENTE ====================
+# Variáveis obrigatórias
+REQUIRED_ENV_VARS = ['SUPABASE_URL', 'SUPABASE_KEY', 'SECRET_KEY']
+missing_vars = [var for var in REQUIRED_ENV_VARS if not os.getenv(var)]
+
+if missing_vars:
+    logger.error(f"Variáveis de ambiente obrigatórias faltando: {', '.join(missing_vars)}")
+    logger.error("Execute: python validate_env.py")
+    raise EnvironmentError(f"Variáveis faltando: {', '.join(missing_vars)}")
+
+# Validar SECRET_KEY
+SECRET_KEY = os.getenv('SECRET_KEY')
+if SECRET_KEY == 'young-empreendimentos-comissoes-2024':
+    logger.error("SECRET_KEY está usando valor padrão INSEGURO!")
+    raise EnvironmentError("SECRET_KEY insegura! Gere uma nova: python -c \"import secrets; print(secrets.token_hex(32))\"")
+
+if len(SECRET_KEY) < 32:
+    logger.warning(f"SECRET_KEY muito curta ({len(SECRET_KEY)} caracteres, recomendado 64+)")
+
+# ==================== INICIALIZAR FLASK ====================
 app = Flask(__name__)
-app.secret_key = os.getenv('SECRET_KEY', 'young-empreendimentos-comissoes-2024')
-CORS(app)
+app.secret_key = SECRET_KEY
+
+# Configurar CORS de forma restritiva
+PRODUCTION_URL = os.getenv('PRODUCTION_URL', 'http://localhost:5000')
+CORS(app, 
+     origins=[PRODUCTION_URL, 'http://localhost:5000', 'http://127.0.0.1:5000'],
+     supports_credentials=True,
+     allow_headers=['Content-Type', 'Authorization'],
+     methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'])
+
+# Limite de tamanho de upload
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB
+
+logger.info(f"Flask app inicializado. CORS configurado para: {PRODUCTION_URL}")
 
 # Configurar Flask-Login
 login_manager = LoginManager()
@@ -120,6 +159,36 @@ def logout():
     logout_user()
     return redirect(url_for('login'))
 
+
+# ==================== ROTAS DE SAÚDE E MONITORAMENTO ====================
+
+@app.route('/health')
+def health_check():
+    """Endpoint de healthcheck para monitoramento"""
+    try:
+        # Testar conexão com Supabase
+        sync = SiengeSupabaseSync()
+        sync.supabase.table('usuarios').select('id').limit(1).execute()
+        
+        return jsonify({
+            'status': 'healthy',
+            'timestamp': datetime.now().isoformat(),
+            'service': 'Sistema de Comissões Young',
+            'database': 'connected'
+        }), 200
+    except Exception as e:
+        logger.error(f"Health check failed: {str(e)}")
+        return jsonify({
+            'status': 'unhealthy',
+            'timestamp': datetime.now().isoformat(),
+            'service': 'Sistema de Comissões Young',
+            'error': str(e)
+        }), 503
+
+@app.route('/api/health')
+def api_health_check():
+    """Endpoint de healthcheck da API"""
+    return health_check()
 
 # ==================== ROTAS PRINCIPAIS ====================
 
@@ -939,6 +1008,16 @@ def listar_todas_comissoes():
         # Ordenar por data
         comissoes.sort(key=lambda x: x.get('commission_date') or '', reverse=True)
         
+        # Adicionar valor_pago de cada comissão (buscar da tabela sienge_valor_pago)
+        for c in comissoes:
+            numero_contrato = c.get('numero_contrato')
+            building_id = c.get('building_id')
+            if numero_contrato and building_id:
+                valor_pago = sync.get_valor_pago_por_contrato(numero_contrato, building_id)
+                c['valor_pago'] = valor_pago or 0
+            else:
+                c['valor_pago'] = 0
+        
         return jsonify({
             'sucesso': True,
             'comissoes': comissoes,
@@ -1187,9 +1266,9 @@ def sincronizacao_diaria():
         print(f"[{datetime.now()}] Erro na sincronização: {str(e)}")
 
 
-# Agendar sincronização diária (às 6h da manhã)
-scheduler = BackgroundScheduler()
-scheduler.add_job(sincronizacao_diaria, 'cron', hour=6, minute=0)
+# NOTA: Scheduler foi movido para scheduler.py para evitar duplicação em multi-worker
+# Para ativar sincronização diária, execute: python scheduler.py em processo separado
+# Ou configure um cron job no servidor para chamar: curl http://localhost:5000/api/sincronizar
 
 
 # ==================== INICIALIZAÇÃO ====================
@@ -1198,19 +1277,20 @@ if __name__ == '__main__':
     import sys
     import traceback
     try:
-        # Iniciar agendador
-        scheduler.start()
-        
         # Configurações do servidor
         port = int(os.getenv('FLASK_PORT', 5000))
-        debug = os.getenv('FLASK_DEBUG', 'True').lower() == 'true'
+        debug = os.getenv('FLASK_DEBUG', 'False').lower() == 'true'  # Padrão False
         
-        print(f"Sistema de Comissoes Young iniciando na porta {port}...")
-        print(f"Sincronizacao automatica agendada para 06:00")
+        if debug:
+            logger.warning("⚠️  ATENÇÃO: Modo DEBUG está ATIVO! Não use em produção!")
+        else:
+            logger.info("✅ Modo produção ativo (debug=False)")
+        
+        logger.info(f"Sistema de Comissões Young iniciando na porta {port}...")
+        logger.info(f"Para sincronização automática, execute: python scheduler.py")
         
         app.run(debug=debug, port=port, host='0.0.0.0')
     except Exception as e:
-        print("ERRO ao iniciar o servidor:", file=sys.stderr)
-        print(str(e), file=sys.stderr)
+        logger.error(f"ERRO ao iniciar o servidor: {str(e)}")
         traceback.print_exc(file=sys.stderr)
         sys.exit(1)

@@ -729,6 +729,7 @@ function renderizarTabelaComissoes(comissoes) {
                 <td>${c.unit_name || '-'}</td>
                 <td>${corrigirEspacamentoNome(c.customer_name)}</td>
                 <td>${formatCurrency(c.valor_comissao || c.commission_value)}</td>
+                <td>${formatCurrency(c.valor_pago || 0)}</td>
                 <td>${formatCurrency(c.valor_gatilho)}</td>
                 <td class="${atingiuGatilho ? 'gatilho-sim' : 'gatilho-nao'}">${atingiuGatilho ? 'SIM' : 'NÃO'}</td>
                 <td><span class="badge-status ${getStatusAprovacaoClass(statusAprovacao)}">${statusAprovacao}</span></td>
