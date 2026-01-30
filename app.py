@@ -489,9 +489,9 @@ def buscar_corretor_por_documento():
         
         print(f"[API] Buscando corretor por documento: {documento_limpo}")
         
-        # Buscar todos os corretores e filtrar em Python (mais confiável)
+        # Buscar todos os corretores - usando apenas colunas que existem
         result = sync.supabase.table('sienge_corretores')\
-            .select('sienge_id, cpf, cnpj, nome, email, telefone')\
+            .select('*')\
             .execute()
         
         corretor = None
@@ -515,8 +515,8 @@ def buscar_corretor_por_documento():
                     'cpf': corretor.get('cpf'),
                     'cnpj': corretor.get('cnpj'),
                     'nome': corretor.get('nome'),
-                    'email': corretor.get('email'),
-                    'telefone': corretor.get('telefone')
+                    'email': corretor.get('email') or '',
+                    'telefone': corretor.get('telefone') or ''
                 }
             }), 200
         
