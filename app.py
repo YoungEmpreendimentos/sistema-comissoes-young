@@ -720,6 +720,110 @@ def atualizar_perfil_usuario(user_id):
         return jsonify({'erro': str(e)}), 500
 
 
+@app.route('/api/usuarios/<int:user_id>/senha', methods=['PUT'])
+@login_required
+def atualizar_senha_usuario(user_id):
+    """Redefine a senha de um usuário"""
+    if not current_user.is_admin:
+        return jsonify({'erro': 'Acesso negado'}), 403
+    
+    try:
+        data = request.get_json()
+        nova_senha = data.get('nova_senha')
+        
+        if not nova_senha or len(nova_senha) < 6:
+            return jsonify({'erro': 'Senha deve ter pelo menos 6 caracteres'}), 400
+        
+        resultado = auth_manager.atualizar_senha(user_id, nova_senha, is_corretor=False)
+        
+        if resultado['sucesso']:
+            return jsonify({'sucesso': True}), 200
+        return jsonify({'erro': resultado.get('erro', 'Erro ao atualizar senha')}), 400
+    except Exception as e:
+        return jsonify({'erro': str(e)}), 500
+
+
+@app.route('/api/usuarios/<int:user_id>', methods=['DELETE'])
+@login_required
+def desativar_usuario(user_id):
+    """Desativa um usuário"""
+    if not current_user.is_admin:
+        return jsonify({'erro': 'Acesso negado'}), 403
+    
+    try:
+        resultado = auth_manager.desativar_usuario(user_id, is_corretor=False)
+        
+        if resultado['sucesso']:
+            return jsonify({'sucesso': True}), 200
+        return jsonify({'erro': resultado.get('erro', 'Erro ao desativar usuário')}), 400
+    except Exception as e:
+        return jsonify({'erro': str(e)}), 500
+
+
+# ==================== API - CORRETORES (EDIÇÃO) ====================
+
+@app.route('/api/corretores/<int:sienge_id>/senha', methods=['PUT'])
+@login_required
+def atualizar_senha_corretor(sienge_id):
+    """Redefine a senha de um corretor"""
+    if not current_user.is_admin:
+        return jsonify({'erro': 'Acesso negado'}), 403
+    
+    try:
+        data = request.get_json()
+        nova_senha = data.get('nova_senha')
+        
+        if not nova_senha or len(nova_senha) < 6:
+            return jsonify({'erro': 'Senha deve ter pelo menos 6 caracteres'}), 400
+        
+        resultado = auth_manager.atualizar_senha(sienge_id, nova_senha, is_corretor=True)
+        
+        if resultado['sucesso']:
+            return jsonify({'sucesso': True}), 200
+        return jsonify({'erro': resultado.get('erro', 'Erro ao atualizar senha')}), 400
+    except Exception as e:
+        return jsonify({'erro': str(e)}), 500
+
+
+@app.route('/api/corretores/<int:sienge_id>/email', methods=['PUT'])
+@login_required
+def atualizar_email_corretor(sienge_id):
+    """Atualiza o e-mail de um corretor"""
+    if not current_user.is_admin:
+        return jsonify({'erro': 'Acesso negado'}), 403
+    
+    try:
+        data = request.get_json()
+        novo_email = data.get('email')
+        
+        sync = SiengeSupabaseSync()
+        sync.supabase.table('sienge_corretores')\
+            .update({'email': novo_email})\
+            .eq('sienge_id', sienge_id)\
+            .execute()
+        
+        return jsonify({'sucesso': True}), 200
+    except Exception as e:
+        return jsonify({'erro': str(e)}), 500
+
+
+@app.route('/api/corretores/<int:sienge_id>', methods=['DELETE'])
+@login_required
+def remover_acesso_corretor(sienge_id):
+    """Remove o acesso de um corretor (limpa a senha)"""
+    if not current_user.is_admin:
+        return jsonify({'erro': 'Acesso negado'}), 403
+    
+    try:
+        resultado = auth_manager.desativar_usuario(sienge_id, is_corretor=True)
+        
+        if resultado['sucesso']:
+            return jsonify({'sucesso': True}), 200
+        return jsonify({'erro': resultado.get('erro', 'Erro ao remover acesso')}), 400
+    except Exception as e:
+        return jsonify({'erro': str(e)}), 500
+
+
 # ==================== API - REGRAS DE GATILHO ====================
 
 @app.route('/api/regras-gatilho', methods=['GET'])

@@ -1093,6 +1093,7 @@ function renderizarUsuariosConfig(usuarios) {
                     <th>Perfil</th>
                     <th>Admin</th>
                     <th>Último Login</th>
+                    <th style="text-align: center;">Ações</th>
                 </tr>
             </thead>
             <tbody>
@@ -1100,14 +1101,97 @@ function renderizarUsuariosConfig(usuarios) {
                     <tr>
                         <td>${u.nome_completo || '-'}</td>
                         <td>${u.username}</td>
-                        <td>${u.perfil || 'Gestor'}</td>
+                        <td>
+                            <select class="form-select-mini" onchange="alterarPerfilUsuario(${u.id}, this.value)" style="padding: 0.25rem 0.5rem; font-size: 0.85rem;">
+                                <option value="Gestor" ${u.perfil === 'Gestor' ? 'selected' : ''}>Gestor</option>
+                                <option value="Direção" ${u.perfil === 'Direção' ? 'selected' : ''}>Direção</option>
+                            </select>
+                        </td>
                         <td>${u.is_admin ? 'Sim' : 'Não'}</td>
                         <td>${u.ultimo_login ? formatDate(u.ultimo_login) : 'Nunca'}</td>
+                        <td style="text-align: center;">
+                            <button class="btn-action btn-edit" onclick="abrirModalEditarUsuario(${u.id}, '${u.username}', '${u.nome_completo || ''}')" title="Editar">✏️</button>
+                            <button class="btn-action btn-delete" onclick="confirmarExcluirUsuario(${u.id}, '${u.nome_completo || u.username}')" title="Excluir">🗑️</button>
+                        </td>
                     </tr>
                 `).join('')}
             </tbody>
         </table>
     `;
+}
+
+// Funções de edição de usuário
+async function alterarPerfilUsuario(userId, novoPerfil) {
+    try {
+        const response = await fetch(`/api/usuarios/${userId}/perfil`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ perfil: novoPerfil })
+        });
+        
+        if (response.ok) {
+            mostrarNotificacao('Perfil atualizado com sucesso!', 'success');
+        } else {
+            mostrarNotificacao('Erro ao atualizar perfil', 'error');
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        mostrarNotificacao('Erro ao atualizar perfil', 'error');
+    }
+}
+
+function abrirModalEditarUsuario(userId, username, nomeCompleto) {
+    const novaSenha = prompt(`Redefinir senha para ${nomeCompleto || username}?\n\nDigite a nova senha (deixe vazio para cancelar):`);
+    
+    if (novaSenha === null || novaSenha === '') return;
+    
+    if (novaSenha.length < 6) {
+        alert('A senha deve ter pelo menos 6 caracteres!');
+        return;
+    }
+    
+    redefinirSenhaUsuario(userId, novaSenha);
+}
+
+async function redefinirSenhaUsuario(userId, novaSenha) {
+    try {
+        const response = await fetch(`/api/usuarios/${userId}/senha`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nova_senha: novaSenha })
+        });
+        
+        if (response.ok) {
+            mostrarNotificacao('Senha redefinida com sucesso!', 'success');
+        } else {
+            mostrarNotificacao('Erro ao redefinir senha', 'error');
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        mostrarNotificacao('Erro ao redefinir senha', 'error');
+    }
+}
+
+async function confirmarExcluirUsuario(userId, nome) {
+    if (!confirm(`Tem certeza que deseja desativar o usuário "${nome}"?\n\nEle não poderá mais acessar o sistema.`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/usuarios/${userId}`, {
+            method: 'DELETE'
+        });
+        
+        if (response.ok) {
+            mostrarNotificacao('Usuário desativado com sucesso!', 'success');
+            carregarUsuariosConfig();
+        } else {
+            mostrarNotificacao('Erro ao desativar usuário', 'error');
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        mostrarNotificacao('Erro ao desativar usuário', 'error');
+    }
 }
 
 async function carregarCorretoresConfig() {
@@ -1131,7 +1215,7 @@ function renderizarCorretoresConfig(corretores) {
     if (!lista) return;
     
     if (corretores.length === 0) {
-        lista.innerHTML = '<p>Nenhum corretor cadastrado.</p>';
+        lista.innerHTML = '<p>Nenhum corretor cadastrado no sistema.</p>';
         return;
     }
     
@@ -1140,9 +1224,11 @@ function renderizarCorretoresConfig(corretores) {
             <thead>
                 <tr>
                     <th>Nome</th>
-                    <th>CPF</th>
+                    <th>CPF/CNPJ</th>
                     <th>E-mail</th>
+                    <th>Cadastro</th>
                     <th>Último Login</th>
+                    <th style="text-align: center;">Ações</th>
                 </tr>
             </thead>
             <tbody>
@@ -1151,12 +1237,97 @@ function renderizarCorretoresConfig(corretores) {
                         <td>${c.nome}</td>
                         <td>${c.cpf}</td>
                         <td>${c.email || '-'}</td>
+                        <td>${c.cadastro_em ? formatDate(c.cadastro_em) : '-'}</td>
                         <td>${c.ultimo_login ? formatDate(c.ultimo_login) : 'Nunca'}</td>
+                        <td style="text-align: center;">
+                            <button class="btn-action btn-edit" onclick="abrirModalEditarCorretor(${c.sienge_id}, '${c.nome}', '${c.email || ''}')" title="Editar">✏️</button>
+                            <button class="btn-action btn-delete" onclick="confirmarExcluirCorretor(${c.sienge_id}, '${c.nome}')" title="Remover Acesso">🗑️</button>
+                        </td>
                     </tr>
                 `).join('')}
             </tbody>
         </table>
     `;
+}
+
+// Funções de edição de corretor
+function abrirModalEditarCorretor(siengeId, nome, email) {
+    const opcao = prompt(`Editar corretor: ${nome}\n\n1 - Redefinir senha\n2 - Alterar e-mail\n\nDigite a opção (1 ou 2):`);
+    
+    if (opcao === '1') {
+        const novaSenha = prompt('Digite a nova senha (mínimo 6 caracteres):');
+        if (novaSenha && novaSenha.length >= 6) {
+            redefinirSenhaCorretor(siengeId, novaSenha);
+        } else if (novaSenha) {
+            alert('A senha deve ter pelo menos 6 caracteres!');
+        }
+    } else if (opcao === '2') {
+        const novoEmail = prompt('Digite o novo e-mail:', email);
+        if (novoEmail && novoEmail !== email) {
+            alterarEmailCorretor(siengeId, novoEmail);
+        }
+    }
+}
+
+async function redefinirSenhaCorretor(siengeId, novaSenha) {
+    try {
+        const response = await fetch(`/api/corretores/${siengeId}/senha`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nova_senha: novaSenha })
+        });
+        
+        if (response.ok) {
+            mostrarNotificacao('Senha do corretor redefinida com sucesso!', 'success');
+        } else {
+            mostrarNotificacao('Erro ao redefinir senha', 'error');
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        mostrarNotificacao('Erro ao redefinir senha', 'error');
+    }
+}
+
+async function alterarEmailCorretor(siengeId, novoEmail) {
+    try {
+        const response = await fetch(`/api/corretores/${siengeId}/email`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: novoEmail })
+        });
+        
+        if (response.ok) {
+            mostrarNotificacao('E-mail atualizado com sucesso!', 'success');
+            carregarCorretoresConfig();
+        } else {
+            mostrarNotificacao('Erro ao atualizar e-mail', 'error');
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        mostrarNotificacao('Erro ao atualizar e-mail', 'error');
+    }
+}
+
+async function confirmarExcluirCorretor(siengeId, nome) {
+    if (!confirm(`Tem certeza que deseja remover o acesso do corretor "${nome}"?\n\nEle não poderá mais fazer login no sistema.`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/corretores/${siengeId}`, {
+            method: 'DELETE'
+        });
+        
+        if (response.ok) {
+            mostrarNotificacao('Acesso do corretor removido com sucesso!', 'success');
+            carregarCorretoresConfig();
+        } else {
+            mostrarNotificacao('Erro ao remover acesso', 'error');
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        mostrarNotificacao('Erro ao remover acesso', 'error');
+    }
 }
 
 async function carregarConfiguracoesEmails() {
