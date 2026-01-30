@@ -487,15 +487,26 @@ def buscar_corretor_por_documento():
         
         sync = SiengeSupabaseSync()
         
-        # Buscar na tabela sienge_corretores pelo CPF ou CNPJ
-        # Tentar buscar por CPF
+        print(f"[API] Buscando corretor por documento: {documento_limpo}")
+        
+        # Buscar todos os corretores e filtrar em Python (mais confiável)
         result = sync.supabase.table('sienge_corretores')\
             .select('sienge_id, cpf, cnpj, nome, email, telefone')\
-            .or_(f'cpf.eq.{documento_limpo},cnpj.eq.{documento_limpo}')\
             .execute()
         
-        if result.data and len(result.data) > 0:
-            corretor = result.data[0]
+        corretor = None
+        if result.data:
+            for c in result.data:
+                # Limpar CPF/CNPJ do banco para comparação
+                cpf_banco = (c.get('cpf') or '').replace('.', '').replace('-', '').replace('/', '').strip()
+                cnpj_banco = (c.get('cnpj') or '').replace('.', '').replace('-', '').replace('/', '').strip()
+                
+                if cpf_banco == documento_limpo or cnpj_banco == documento_limpo:
+                    corretor = c
+                    print(f"[API] Corretor encontrado: {corretor.get('nome')}")
+                    break
+        
+        if corretor:
             return jsonify({
                 'sucesso': True,
                 'encontrado': True,
@@ -509,6 +520,7 @@ def buscar_corretor_por_documento():
                 }
             }), 200
         
+        print(f"[API] Corretor não encontrado com documento: {documento_limpo}")
         return jsonify({
             'sucesso': True,
             'encontrado': False,
@@ -517,6 +529,8 @@ def buscar_corretor_por_documento():
         
     except Exception as e:
         print(f"[API] Erro ao buscar corretor por documento: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'sucesso': False, 'erro': str(e)}), 500
 
 

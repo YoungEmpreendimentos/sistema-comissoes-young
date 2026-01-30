@@ -166,17 +166,26 @@ class AuthManager:
             
             print(f"[AUTH] Tentando autenticar corretor com documento: {doc_limpo}")
             
-            # Buscar na tabela sienge_corretores pelo CPF ou CNPJ
+            # Buscar todos os corretores e filtrar em Python (mais confiável)
             resultado = self.supabase.table('sienge_corretores')\
                 .select('*')\
-                .or_(f'cpf.eq.{doc_limpo},cnpj.eq.{doc_limpo}')\
                 .execute()
             
-            if not resultado.data:
+            corretor_data = None
+            if resultado.data:
+                for c in resultado.data:
+                    # Limpar CPF/CNPJ do banco para comparação
+                    cpf_banco = (c.get('cpf') or '').replace('.', '').replace('-', '').replace('/', '').strip()
+                    cnpj_banco = (c.get('cnpj') or '').replace('.', '').replace('-', '').replace('/', '').strip()
+                    
+                    if cpf_banco == doc_limpo or cnpj_banco == doc_limpo:
+                        corretor_data = c
+                        break
+            
+            if not corretor_data:
                 print(f"[AUTH] Corretor não encontrado com documento: {doc_limpo}")
                 return None
             
-            corretor_data = resultado.data[0]
             print(f"[AUTH] Corretor encontrado: {corretor_data.get('nome')}")
             
             # Ignorar se inativo
@@ -299,21 +308,33 @@ class AuthManager:
             print(f"[AUTH] Criando acesso para corretor: {nome}, documento: {doc_limpo}, sienge_id: {sienge_id}")
             
             # Verificar se o corretor existe na tabela sienge_corretores
+            corretor = None
+            
             if sienge_id:
                 existente = self.supabase.table('sienge_corretores')\
                     .select('*')\
                     .eq('sienge_id', sienge_id)\
                     .execute()
-            else:
+                if existente.data:
+                    corretor = existente.data[0]
+            
+            # Se não encontrou por sienge_id, buscar por CPF/CNPJ
+            if not corretor:
                 existente = self.supabase.table('sienge_corretores')\
                     .select('*')\
-                    .or_(f'cpf.eq.{doc_limpo},cnpj.eq.{doc_limpo}')\
                     .execute()
+                
+                if existente.data:
+                    for c in existente.data:
+                        cpf_banco = (c.get('cpf') or '').replace('.', '').replace('-', '').replace('/', '').strip()
+                        cnpj_banco = (c.get('cnpj') or '').replace('.', '').replace('-', '').replace('/', '').strip()
+                        
+                        if cpf_banco == doc_limpo or cnpj_banco == doc_limpo:
+                            corretor = c
+                            break
             
-            if not existente.data:
+            if not corretor:
                 return {'sucesso': False, 'erro': 'Corretor não encontrado no sistema SIENGE. Verifique o CPF/CNPJ.'}
-            
-            corretor = existente.data[0]
             
             # Verificar se já tem senha cadastrada
             if corretor.get('senha_hash') or corretor.get('password_hash'):
