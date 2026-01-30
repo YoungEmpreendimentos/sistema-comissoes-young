@@ -346,8 +346,8 @@ class AuthManager:
                 'cadastro_login_em': datetime.now().isoformat()
             }
             
-            # Atualizar email se fornecido e não existir
-            if email and not corretor.get('email'):
+            # Sempre salvar o email informado pelo corretor
+            if email:
                 atualizacao['email'] = email
             
             resultado = self.supabase.table('sienge_corretores')\
